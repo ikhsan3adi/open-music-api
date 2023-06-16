@@ -47,7 +47,7 @@ class SongsService {
     const result = await this._pool.query(query);
 
     if (!result.rowCount) {
-      throw new NotFoundError('Album tidak ditemukan');
+      throw new NotFoundError('Lagu tidak ditemukan');
     }
 
     return mapDBToModel(result.rows[0]);
@@ -57,6 +57,17 @@ class SongsService {
     const query = {
       text: 'SELECT id, title, performer FROM songs WHERE album_id = $1',
       values: [albumId],
+    };
+
+    const result = await this._pool.query(query);
+
+    return result.rows.map(mapDBToModel);
+  }
+
+  async getSongByPlaylistId(playlistId) {
+    const query = {
+      text: 'SELECT songs.id, songs.title, songs.performer FROM songs LEFT JOIN playlist_songs ON playlist_songs.song_id = songs.id WHERE playlist_songs.playlist_id = $1 GROUP BY songs.id',
+      values: [playlistId],
     };
 
     const result = await this._pool.query(query);
