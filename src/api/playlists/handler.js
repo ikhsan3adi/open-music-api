@@ -8,7 +8,7 @@ class PlaylistsHandler {
     autoBind(this);
   }
 
-  async postplaylistHandler(request, h) {
+  async postPlaylistHandler(request, h) {
     this._validator.validatePlaylistPayload(request.payload);
 
     const { name = '' } = request.payload;
@@ -27,7 +27,7 @@ class PlaylistsHandler {
     return response;
   }
 
-  async getplaylistsHandler(request) {
+  async getPlaylistsHandler(request) {
     const { id: credentialId } = request.auth.credentials;
 
     const playlists = await this._service.getPlaylists(credentialId);
@@ -40,7 +40,7 @@ class PlaylistsHandler {
     };
   }
 
-  async deleteplaylistByIdHandler(request) {
+  async deletePlaylistByIdHandler(request) {
     const { id } = request.params;
     const { id: credentialId } = request.auth.credentials;
 
@@ -53,7 +53,7 @@ class PlaylistsHandler {
     };
   }
 
-  async postplaylistsongHandler(request, h) {
+  async postPlaylistSongHandler(request, h) {
     this._validator.validatePlaylistSongPayload(request.payload);
     const { songId } = request.payload;
 
@@ -71,7 +71,7 @@ class PlaylistsHandler {
       time: new Date().toISOString(),
     };
 
-    await this._service.addPlaylistActivitiesById(activities);
+    await this._service.addPlaylistActivities(activities);
 
     const response = h.response({
       status: 'success',
@@ -81,7 +81,7 @@ class PlaylistsHandler {
     return response;
   }
 
-  async getplaylistsongsHandler(request) {
+  async getPlaylistSongsHandler(request) {
     const { id: playlistId } = request.params;
     const { id: credentialId } = request.auth.credentials;
 
@@ -97,7 +97,7 @@ class PlaylistsHandler {
     };
   }
 
-  async deleteplaylistsongByIdHandler(request) {
+  async deletePlaylistSongByIdHandler(request) {
     this._validator.validatePlaylistSongPayload(request.payload);
     const { songId } = request.payload;
 
@@ -115,7 +115,7 @@ class PlaylistsHandler {
       time: new Date().toISOString(),
     };
 
-    await this._service.addPlaylistActivitiesById(activities);
+    await this._service.addPlaylistActivities(activities);
 
     return {
       status: 'success',
@@ -123,7 +123,7 @@ class PlaylistsHandler {
     };
   }
 
-  async getplaylistActivitiesHandler(request) {
+  async getPlaylistActivitiesHandler(request) {
     const { id: playlistId } = request.params;
     const { id: credentialId } = request.auth.credentials;
 

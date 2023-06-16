@@ -97,7 +97,7 @@ class PlaylistsService {
     }
   }
 
-  async addPlaylistActivitiesById({
+  async addPlaylistActivities({
     playlistId, songId, userId, action, time,
   }) {
     const id = `activities-${nanoid(16)}`;
