@@ -5,10 +5,11 @@ const NotFoundError = require('../../exceptions/NotFoundError');
 const AuthorizationError = require('../../exceptions/AuthorizationError');
 
 class PlaylistsService {
-  constructor(collaborationService, songsService) {
+  constructor(collaborationService, songsService, cacheService) {
     this._pool = new Pool();
     this._collaborationService = collaborationService;
     this._songsService = songsService;
+    this._cacheService = cacheService;
   }
 
   async addPlaylist({ name, owner }) {
@@ -25,23 +26,33 @@ class PlaylistsService {
       throw new InvariantError('Playlist gagal ditambahkan');
     }
 
+    await this._cacheService.delete(`playlists:${owner}`);
+
     return result.rows[0].id;
   }
 
   async getPlaylists(owner) {
-    const query = {
-      text: 'SELECT playlists.id, playlists.name, users.username FROM playlists LEFT JOIN users ON users.id = playlists.owner LEFT JOIN collaborations ON collaborations.playlist_id = playlists.id WHERE playlists.owner = $1 OR collaborations.user_id = $1 GROUP BY playlists.id, users.username',
-      values: [owner],
-    };
+    try {
+      const result = await this._cacheService.get(`playlists:${owner}`);
 
-    const result = await this._pool.query(query);
+      return { playlists: JSON.parse(result), source: 'cache' };
+    } catch (error) {
+      const query = {
+        text: 'SELECT playlists.id, playlists.name, users.username FROM playlists LEFT JOIN users ON users.id = playlists.owner LEFT JOIN collaborations ON collaborations.playlist_id = playlists.id WHERE playlists.owner = $1 OR collaborations.user_id = $1 GROUP BY playlists.id, users.username',
+        values: [owner],
+      };
 
-    return result.rows;
+      const result = await this._pool.query(query);
+
+      await this._cacheService.set(`playlists:${owner}`, JSON.stringify(result.rows), 900);
+
+      return { playlists: result.rows, source: 'database' };
+    }
   }
 
   async deletePlaylistById(id) {
     const query = {
-      text: 'DELETE FROM playlists WHERE id = $1 RETURNING id',
+      text: 'DELETE FROM playlists WHERE id = $1 RETURNING id, owner',
       values: [id],
     };
 
@@ -50,6 +61,10 @@ class PlaylistsService {
     if (!result.rowCount) {
       throw new NotFoundError('Playlist gagal dihapus. Id tidak ditemukan');
     }
+
+    const { owner } = result.rows[0];
+
+    await this._cacheService.delete(`playlists:${owner}`);
   }
 
   async addPlaylistSong(playlistId, songId) {
@@ -68,20 +83,34 @@ class PlaylistsService {
       throw new InvariantError('Lagu gagal ditambahkan ke playlist');
     }
 
+    await this._cacheService.delete(`playlist-songs:${playlistId}`);
+
     return result.rows[0].id;
   }
 
   async getPlaylistSongsByPlaylistId(playlistId) {
-    const query = {
-      text: 'SELECT playlists.id, playlists.name, users.username FROM playlists LEFT JOIN users ON users.id = playlists.owner WHERE playlists.id = $1',
-      values: [playlistId],
-    };
+    try {
+      const result = await this._cacheService.get(`playlist-songs:${playlistId}`);
 
-    const result = await this._pool.query(query);
+      return { playlistWithSongs: JSON.parse(result), source: 'cache' };
+    } catch (error) {
+      const query = {
+        text: 'SELECT playlists.id, playlists.name, users.username FROM playlists LEFT JOIN users ON users.id = playlists.owner WHERE playlists.id = $1',
+        values: [playlistId],
+      };
 
-    const songs = await this._songsService.getSongByPlaylistId(playlistId);
+      const result = await this._pool.query(query);
+      const songs = await this._songsService.getSongByPlaylistId(playlistId);
 
-    return { ...result.rows[0], songs };
+      const playlistWithSongs = {
+        ...result.rows[0],
+        songs,
+      };
+
+      await this._cacheService.set(`playlist-songs:${playlistId}`, JSON.stringify(playlistWithSongs), 900);
+
+      return { playlistWithSongs, source: 'database' };
+    }
   }
 
   async deletePlaylistSongById(songId, playlistId) {
@@ -95,6 +124,8 @@ class PlaylistsService {
     if (!result.rowCount) {
       throw new NotFoundError('Lagu gagal dihapus dari playlist. Id tidak ditemukan');
     }
+
+    await this._cacheService.delete(`playlist-songs:${playlistId}`);
   }
 
   async addPlaylistActivities({

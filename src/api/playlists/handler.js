@@ -27,17 +27,22 @@ class PlaylistsHandler {
     return response;
   }
 
-  async getPlaylistsHandler(request) {
+  async getPlaylistsHandler(request, h) {
     const { id: credentialId } = request.auth.credentials;
 
-    const playlists = await this._service.getPlaylists(credentialId);
+    const { playlists, source } = await this._service.getPlaylists(credentialId);
 
-    return {
+    const response = h.response({
       status: 'success',
       data: {
         playlists,
       },
-    };
+    });
+
+    response.header('X-Data-Source', source);
+    response.code(200);
+
+    return response;
   }
 
   async deletePlaylistByIdHandler(request) {
@@ -81,20 +86,28 @@ class PlaylistsHandler {
     return response;
   }
 
-  async getPlaylistSongsHandler(request) {
+  async getPlaylistSongsHandler(request, h) {
     const { id: playlistId } = request.params;
     const { id: credentialId } = request.auth.credentials;
 
     await this._service.verifyPlaylistAccess(playlistId, credentialId);
 
-    const playlist = await this._service.getPlaylistSongsByPlaylistId(playlistId);
+    const {
+      playlistWithSongs,
+      source,
+    } = await this._service.getPlaylistSongsByPlaylistId(playlistId);
 
-    return {
+    const response = h.response({
       status: 'success',
       data: {
-        playlist,
+        playlist: playlistWithSongs,
       },
-    };
+    });
+
+    response.header('X-Data-Source', source);
+    response.code(200);
+
+    return response;
   }
 
   async deletePlaylistSongByIdHandler(request) {

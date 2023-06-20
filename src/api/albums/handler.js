@@ -1,4 +1,5 @@
 const autoBind = require('auto-bind');
+const config = require('../../utils/config');
 
 class AlbumsHandler {
   constructor(albumsService, songsService, validator) {
@@ -35,6 +36,12 @@ class AlbumsHandler {
 
     album.songs = songs;
 
+    album.coverUrl = album.cover
+      ? `http://${config.app.host}:${config.app.port}/upload/images/${album.cover}`
+      : null;
+
+    delete album.cover;
+
     return {
       status: 'success',
       data: {
@@ -65,6 +72,50 @@ class AlbumsHandler {
       status: 'success',
       message: 'Album berhasil dihapus',
     };
+  }
+
+  async postAlbumLikeHandler(request, h) {
+    const { id: credentialId } = request.auth.credentials;
+    const { id } = request.params;
+
+    await this._albumsService.addAlbumLike(credentialId, id);
+
+    const response = h.response({
+      status: 'success',
+      message: 'Berhasil menyukai album',
+    });
+
+    response.code(201);
+    return response;
+  }
+
+  async deleteAlbumLikeHandler(request) {
+    const { id: credentialId } = request.auth.credentials;
+    const { id } = request.params;
+
+    await this._albumsService.deleteAlbumLike(credentialId, id);
+
+    return {
+      status: 'success',
+      message: 'Batal menyukai album',
+    };
+  }
+
+  async getAlbumLikesHandler(request, h) {
+    const { id } = request.params;
+    const { albumLikes, source } = await this._albumsService.getAlbumLikesById(id);
+
+    const response = h.response({
+      status: 'success',
+      data: {
+        likes: albumLikes.length,
+      },
+    });
+
+    response.header('X-Data-Source', source);
+    response.code(200);
+
+    return response;
   }
 }
 
