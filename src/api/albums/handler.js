@@ -113,7 +113,6 @@ class AlbumsHandler {
     });
 
     response.header('X-Data-Source', source);
-    response.code(200);
 
     return response;
   }
