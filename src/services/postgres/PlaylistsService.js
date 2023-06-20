@@ -139,17 +139,27 @@ class PlaylistsService {
     };
 
     await this._pool.query(query);
+
+    await this._cacheService.delete(`playlist-activities:${playlistId}`);
   }
 
   async getPlaylistActivitiesById(id) {
-    const query = {
-      text: 'SELECT users.username, songs.title, activities.action, activities.time FROM playlist_song_activities as activities LEFT JOIN users ON users.id = activities.user_id LEFT JOIN songs ON songs.id = activities.song_id WHERE activities.playlist_id = $1',
-      values: [id],
-    };
+    try {
+      const result = await this._cacheService.get(`playlist-activities:${id}`);
 
-    const result = await this._pool.query(query);
+      return { activities: JSON.parse(result), source: 'cache' };
+    } catch (error) {
+      const query = {
+        text: 'SELECT users.username, songs.title, activities.action, activities.time FROM playlist_song_activities as activities LEFT JOIN users ON users.id = activities.user_id LEFT JOIN songs ON songs.id = activities.song_id WHERE activities.playlist_id = $1',
+        values: [id],
+      };
 
-    return result.rows;
+      const result = await this._pool.query(query);
+
+      await this._cacheService.set(`playlist-activities:${id}`, JSON.stringify(result.rows));
+
+      return { activities: result.rows, source: 'database' };
+    }
   }
 
   async verifyPlaylistOwner(id, owner) {

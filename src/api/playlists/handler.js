@@ -136,21 +136,26 @@ class PlaylistsHandler {
     };
   }
 
-  async getPlaylistActivitiesHandler(request) {
+  async getPlaylistActivitiesHandler(request, h) {
     const { id: playlistId } = request.params;
     const { id: credentialId } = request.auth.credentials;
 
     await this._service.verifyPlaylistAccess(playlistId, credentialId);
 
-    const activities = await this._service.getPlaylistActivitiesById(playlistId);
+    const { activities, source } = await this._service.getPlaylistActivitiesById(playlistId);
 
-    return {
+    const response = h.response({
       status: 'success',
       data: {
         playlistId,
         activities,
       },
-    };
+    });
+
+    response.header('X-Data-Source', source);
+    response.code(200);
+
+    return response;
   }
 }
 
